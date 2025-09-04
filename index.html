@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Appointment Booking System</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- استيراد React و ReactDOM. يتم استخدامهما هنا كمتغيرات عالمية -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <style>
@@ -24,13 +25,18 @@
   <div id="root" class="w-full max-w-6xl"></div>
 
   <script type="module">
+    // استيراد Firebase كـ ES Modules
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
     import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-    import { getFirestore, collection, query, onSnapshot, doc, addDoc, updateDoc, deleteDoc, getDocs, where } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+    import { getFirestore, collection, query, onSnapshot, doc, addDoc, updateDoc, deleteDoc, getDocs, where, setLogLevel } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    // تعيين مستوى تسجيل الدخول لتصحيح الأخطاء
+    setLogLevel('debug');
 
     const { useState, useEffect } = React;
     const { createRoot } = ReactDOM;
 
+    // تهيئة متغيرات Firebase العالمية
     const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : null);
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -40,6 +46,7 @@
     const auth = getAuth(app);
 
     function App() {
+      // حالات React لإدارة واجهة المستخدم
       const [isLoggedIn, setIsLoggedIn] = useState(false);
       const [username, setUsername] = useState('');
       const [password, setPassword] = useState('');
@@ -52,6 +59,7 @@
       const [bookingToDeleteId, setBookingToDeleteId] = useState(null);
       const [currentView, setCurrentView] = useState('form');
 
+      // تأثير لمصادقة المستخدم عند التحميل الأولي
       useEffect(() => {
         const authenticate = async () => {
           try {
@@ -69,13 +77,16 @@
         const unsubscribe = onAuthStateChanged(auth, user => {
           if (user) {
             setUserId(user.uid);
+            console.log("User ID:", user.uid);
           } else {
             setUserId(null);
+            console.log("User is not signed in.");
           }
         });
         return () => unsubscribe();
       }, []);
 
+      // تأثير لإنشاء بيانات الاعتماد الافتراضية للمسؤول
       useEffect(() => {
         const createAdminCredentials = async () => {
           if (userId) {
@@ -94,6 +105,7 @@
         createAdminCredentials();
       }, [userId]);
 
+      // تأثير لجلب الحجوزات في الوقت الفعلي
       useEffect(() => {
         if (isLoggedIn && userId) {
           const collectionPath = `artifacts/${appId}/users/${userId}/bookings`;
@@ -104,6 +116,7 @@
             querySnapshot.forEach((doc) => {
               bookingsArray.push({ id: doc.id, ...doc.data() });
             });
+            // فرز الحجوزات حسب التاريخ والوقت
             bookingsArray.sort((a, b) => {
               const dateA = new Date(`${a.date}T${a.time}`);
               const dateB = new Date(`${b.date}T${b.time}`);
@@ -117,6 +130,7 @@
         }
       }, [isLoggedIn, userId]);
 
+      // معالجة تسجيل الدخول
       const handleLogin = async (e) => {
         e.preventDefault();
         const credentialsCollection = collection(db, `artifacts/${appId}/public/data/adminCredentials`);
@@ -137,6 +151,7 @@
         }
       };
 
+      // معالجة إرسال الحجز
       const handleBookingSubmit = async (e) => {
         e.preventDefault();
         if (!userId) {
@@ -163,6 +178,7 @@
         }
       };
 
+      // عرض رسائل التنبيه
       const showMessage = (text, type) => {
         setMessage({ text, type });
         setTimeout(() => {
@@ -170,6 +186,7 @@
         }, 3000);
       };
 
+      // معالجة حذف الحجز
       const handleDeleteClick = (id) => {
         setBookingToDeleteId(id);
         setShowConfirmModal(true);
@@ -191,6 +208,7 @@
         }
       };
 
+      // معالجة تعديل الحجز
       const handleEdit = (booking) => {
         setEditingBookingId(booking.id);
         setForm({
@@ -203,6 +221,7 @@
         setCurrentView('form');
       };
 
+      // عرض واجهة المستخدم بناءً على الحالة
       const renderView = () => {
         if (isLoggedIn && currentView === 'dashboard') {
           return React.createElement(
@@ -212,6 +231,11 @@
               "h2",
               { className: "text-2xl font-bold mb-4 text-gray-700" },
               "Dashboard (All Bookings)"
+            ),
+            React.createElement(
+              "p",
+              { className: "text-sm text-gray-500 mb-4" },
+              `User ID: ${userId}`
             ),
             bookings.length > 0 ? (
               React.createElement(
@@ -335,6 +359,11 @@
               "h2",
               { className: "text-2xl font-bold mb-4 text-gray-700" },
               editingBookingId ? 'Edit Booking' : 'Booking Form'
+            ),
+            React.createElement(
+              "p",
+              { className: "text-sm text-gray-500 mb-4" },
+              `User ID: ${userId}`
             ),
             React.createElement(
               "form",
@@ -515,6 +544,11 @@
               "h2",
               { className: "text-2xl font-bold mb-4 text-gray-700" },
               editingBookingId ? 'Edit Booking' : 'Booking Form'
+            ),
+            React.createElement(
+              "p",
+              { className: "text-sm text-gray-500 mb-4" },
+              `User ID: ${userId}`
             ),
             React.createElement(
               "form",
