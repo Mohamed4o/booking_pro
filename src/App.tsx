@@ -43,10 +43,25 @@ function App() {
   const [submitMessage, setSubmitMessage] = useState('');
 
   // Save bookings to localStorage
-  const saveBookingsToStorage = (updatedBookings: Booking[]) => {
-    localStorage.setItem('bookings', JSON.stringify(updatedBookings));
+  import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://qaiwqrdkzvyimisfblgrq.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXdxcmRrenZ5bWlzZmJsZ3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMDE0NzAsImV4cCI6MjA3MjU3NzQ3MH0.6W7sy0FjTHXtgq_fGdyNuijCztSfxvPQi5VajUIYX6k';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const saveBookingsToSupabase = async (updatedBookings) => {
+  const { data, error } = await supabase
+    .from('bookings') // استبدل بـ اسم الجدول في Supabase
+    .insert(updatedBookings);
+
+  if (error) {
+    console.error('Error saving data:', error);
+  } else {
     setBookings(updatedBookings);
-  };
+    console.log('Data saved successfully to Supabase!');
+  }
+};
 
   // Check for duplicate booking
   const isDuplicateBooking = (date: string, time: string, excludeId?: string) => {
