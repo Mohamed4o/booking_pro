@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Mail, Phone, LogOut, Users, Edit, Trash2, Save, X } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
+// تعريف الواجهة لتحديد نوع البيانات
 interface Booking {
-  id: string;
+  id: number; // Supabase uses a number for auto-generated IDs
   name: string;
   email: string;
   phone: string;
@@ -11,37 +13,15 @@ interface Booking {
   createdAt: string;
 }
 
-import { createClient } from '@supabase/supabase-js'
-import { useState, useEffect } from 'react'; // تأكد من استيراد useEffect
-
+// إعداد عميل Supabase
 const supabaseUrl = 'https://qaiwqrdkzvyimisfblgrq.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXdxcmRrenZ5bWlzZmJsZ3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMDE0NzAsImV4cCI6MjA3MjU3NzQ3MH0.6W7sy0FjTHXtgq_fGdyNuijCztSfxvPQi5VajUIYX6k';
-
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 function App() {
-  const [bookings, setBookings] = useState([]); // ابدأ بمصفوفة فارغة
-
-  useEffect(() => {
-    async function fetchBookings() {
-      let { data: fetchedBookings, error } = await supabase
-        .from('bookings') // استبدل بـ اسم الجدول في Supabase
-        .select('*');
-
-      if (error) {
-        console.error('Error fetching data:', error);
-      } else {
-        setBookings(fetchedBookings);
-      }
-    }
-
-    fetchBookings();
-  }, []); // [] تضمن أن الدالة تعمل مرة واحدة فقط عند التحميل
-
-  // بقية الكود الخاص بك
-}
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [activeView, setActiveView] = useState<'booking' | 'login' | 'dashboard'>('booking');
-  const [editingBooking, setEditingBooking] = useState<string | null>(null);
+  const [editingBooking, setEditingBooking] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Omit<Booking, 'id' | 'createdAt'>>({
     name: '',
     email: '',
@@ -49,11 +29,11 @@ function App() {
     date: '',
     time: ''
   });
-  
+
   // Login state
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  
+
   // Booking form state
   const [bookingForm, setBookingForm] = useState({
     name: '',
@@ -65,32 +45,29 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
 
-  // Save bookings to localStorage
-  import { createClient } from '@supabase/supabase-js'
+  // 1. جلب البيانات من Supabase عند تحميل المكون
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
-const supabaseUrl = 'https://qaiwqrdkzvyimisfblgrq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXdxcmRrenZ5bWlzZmJsZ3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMDE0NzAsImV4cCI6MjA3MjU3NzQ3MH0.6W7sy0FjTHXtgq_fGdyNuijCztSfxvPQi5VajUIYX6k';
+  const fetchBookings = async () => {
+    let { data: fetchedBookings, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('createdAt', { ascending: false }); // ترتيب حسب الأحدث
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-const saveBookingsToSupabase = async (updatedBookings) => {
-  const { data, error } = await supabase
-    .from('bookings') // استبدل بـ اسم الجدول في Supabase
-    .insert(updatedBookings);
-
-  if (error) {
-    console.error('Error saving data:', error);
-  } else {
-    setBookings(updatedBookings);
-    console.log('Data saved successfully to Supabase!');
-  }
-};
+    if (error) {
+      console.error('Error fetching data:', error);
+    } else {
+      setBookings(fetchedBookings as Booking[]);
+    }
+  };
 
   // Check for duplicate booking
-  const isDuplicateBooking = (date: string, time: string, excludeId?: string) => {
-    return bookings.some(booking => 
-      booking.date === date && 
-      booking.time === time && 
+  const isDuplicateBooking = (date: string, time: string, excludeId?: number) => {
+    return bookings.some(booking =>
+      booking.date === date &&
+      booking.time === time &&
       booking.id !== excludeId
     );
   };
@@ -98,7 +75,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    
+
     if (loginForm.username === 'admin' && loginForm.password === '12345') {
       setActiveView('dashboard');
       setLoginForm({ username: '', password: '' });
@@ -112,12 +89,12 @@ const saveBookingsToSupabase = async (updatedBookings) => {
     setLoginForm({ username: '', password: '' });
   };
 
+  // 2. إرسال البيانات الجديدة إلى Supabase
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitMessage('');
 
-    // Check for duplicate booking
     if (isDuplicateBooking(bookingForm.date, bookingForm.time)) {
       setSubmitMessage('This slot is already booked. Please choose a different date or time.');
       setIsSubmitting(false);
@@ -125,19 +102,19 @@ const saveBookingsToSupabase = async (updatedBookings) => {
     }
 
     try {
-      // Create new booking
-      const newBooking: Booking = {
-        id: Date.now().toString(),
-        ...bookingForm,
-        createdAt: new Date().toISOString()
-      };
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([{ ...bookingForm }]);
 
-      // Add to bookings list and save to localStorage
-      const updatedBookings = [...bookings, newBooking];
-      saveBookingsToStorage(updatedBookings);
-
-      setSubmitMessage('Booking submitted successfully!');
-      setBookingForm({ name: '', email: '', phone: '', date: '', time: '' });
+      if (error) {
+        console.error('Error submitting booking:', error);
+        setSubmitMessage('Error submitting booking. Please try again.');
+      } else {
+        setSubmitMessage('Booking submitted successfully!');
+        setBookingForm({ name: '', email: '', phone: '', date: '', time: '' });
+        // تحديث البيانات بعد الإضافة
+        fetchBookings();
+      }
 
     } catch (error) {
       console.error('Error submitting booking:', error);
@@ -158,24 +135,29 @@ const saveBookingsToSupabase = async (updatedBookings) => {
     });
   };
 
-  const handleSaveEdit = () => {
-    if (!editingBooking) return;
+  // 3. تعديل البيانات في Supabase
+  const handleSaveEdit = async () => {
+    if (editingBooking === null) return;
 
-    // Check for duplicate booking (excluding current booking)
     if (isDuplicateBooking(editForm.date, editForm.time, editingBooking)) {
       alert('This slot is already booked. Please choose a different date or time.');
       return;
     }
 
-    const updatedBookings = bookings.map(booking =>
-      booking.id === editingBooking
-        ? { ...booking, ...editForm }
-        : booking
-    );
-    
-    saveBookingsToStorage(updatedBookings);
-    setEditingBooking(null);
-    setEditForm({ name: '', email: '', phone: '', date: '', time: '' });
+    const { error } = await supabase
+      .from('bookings')
+      .update(editForm)
+      .eq('id', editingBooking);
+
+    if (error) {
+      console.error('Error saving edit:', error);
+      alert('Error saving edit. Please try again.');
+    } else {
+      setEditingBooking(null);
+      setEditForm({ name: '', email: '', phone: '', date: '', time: '' });
+      // تحديث البيانات بعد التعديل
+      fetchBookings();
+    }
   };
 
   const handleCancelEdit = () => {
@@ -183,10 +165,21 @@ const saveBookingsToSupabase = async (updatedBookings) => {
     setEditForm({ name: '', email: '', phone: '', date: '', time: '' });
   };
 
-  const handleDeleteBooking = (bookingId: string) => {
+  // 4. حذف البيانات من Supabase
+  const handleDeleteBooking = async (bookingId: number) => {
     if (window.confirm('Are you sure you want to delete this booking?')) {
-      const updatedBookings = bookings.filter(booking => booking.id !== bookingId);
-      saveBookingsToStorage(updatedBookings);
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Error deleting booking:', error);
+        alert('Error deleting booking. Please try again.');
+      } else {
+        // تحديث البيانات بعد الحذف
+        fetchBookings();
+      }
     }
   };
 
@@ -202,7 +195,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">BookingPro</h1>
             <p className="text-gray-600">Appointment Management System</p>
           </div>
-          
+
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,7 +214,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                 />
               </div>
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
@@ -236,13 +229,13 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                 required
               />
             </div>
-            
+
             {loginError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
                 {loginError}
               </div>
             )}
-            
+
             <button
               type="submit"
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium"
@@ -250,11 +243,10 @@ const saveBookingsToSupabase = async (updatedBookings) => {
               Sign In
             </button>
           </form>
-          
+
           <div className="mt-8 text-center">
             <div className="bg-gray-50 rounded-xl p-4">
-              
-              
+
               <button
                 onClick={() => setActiveView('booking')}
                 className="mt-3 text-sm text-blue-600 hover:text-blue-700 underline"
@@ -281,7 +273,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                 <h1 className="text-2xl font-bold text-gray-800">BookingPro</h1>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-6">
               <nav className="flex space-x-4">
                 <button
@@ -306,7 +298,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                   Dashboard
                 </button>
               </nav>
-              
+
               {activeView === 'dashboard' && (
                 <button
                   onClick={handleLogout}
@@ -349,7 +341,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                       Email Address *
@@ -368,7 +360,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number *
@@ -386,7 +378,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
@@ -405,7 +397,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-2">
                       Appointment Time *
@@ -423,7 +415,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                     </div>
                   </div>
                 </div>
-                
+
                 {submitMessage && (
                   <div className={`px-4 py-3 rounded-xl text-sm ${
                     submitMessage.includes('successfully')
@@ -433,7 +425,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                     {submitMessage}
                   </div>
                 )}
-                
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -449,7 +441,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                   )}
                 </button>
               </form>
-              
+
               <div className="mt-8 text-center">
                 <p className="text-sm text-gray-500 mb-2">
                   Are you an administrator?
@@ -479,7 +471,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                 </div>
               </div>
             </div>
-            
+
             <div className="overflow-x-auto">
               {bookings.length === 0 ? (
                 <div className="text-center py-16">
@@ -519,7 +511,7 @@ const saveBookingsToSupabase = async (updatedBookings) => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {bookings.map((booking, index) => (
-                      <tr 
+                      <tr
                         key={booking.id}
                         className={`hover:bg-gray-50 transition-colors duration-150 ${
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
