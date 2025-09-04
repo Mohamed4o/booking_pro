@@ -11,12 +11,35 @@ interface Booking {
   createdAt: string;
 }
 
+import { createClient } from '@supabase/supabase-js'
+import { useState, useEffect } from 'react'; // تأكد من استيراد useEffect
+
+const supabaseUrl = 'https://qaiwqrdkzvyimisfblgrq.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhaXdxcmRrenZ5bWlzZmJsZ3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMDE0NzAsImV4cCI6MjA3MjU3NzQ3MH0.6W7sy0FjTHXtgq_fGdyNuijCztSfxvPQi5VajUIYX6k';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 function App() {
-  // Load bookings from localStorage on component mount
-  const [bookings, setBookings] = useState<Booking[]>(() => {
-    const savedBookings = localStorage.getItem('bookings');
-    return savedBookings ? JSON.parse(savedBookings) : [];
-  });
+  const [bookings, setBookings] = useState([]); // ابدأ بمصفوفة فارغة
+
+  useEffect(() => {
+    async function fetchBookings() {
+      let { data: fetchedBookings, error } = await supabase
+        .from('bookings') // استبدل بـ اسم الجدول في Supabase
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching data:', error);
+      } else {
+        setBookings(fetchedBookings);
+      }
+    }
+
+    fetchBookings();
+  }, []); // [] تضمن أن الدالة تعمل مرة واحدة فقط عند التحميل
+
+  // بقية الكود الخاص بك
+}
   const [activeView, setActiveView] = useState<'booking' | 'login' | 'dashboard'>('booking');
   const [editingBooking, setEditingBooking] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Omit<Booking, 'id' | 'createdAt'>>({
