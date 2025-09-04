@@ -216,8 +216,8 @@ function App() {
           <div className="mt-8 text-center">
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="text-sm text-gray-600 mb-2">Demo Credentials:</p>
-              <p className="text-sm font-mono text-gray-800">Username: admin</p>
-              <p className="text-sm font-mono text-gray-800">Password: 12345</p>
+             
+              
               <button
                 onClick={() => setActiveView('booking')}
                 className="mt-3 text-sm text-blue-600 hover:text-blue-700 underline"
